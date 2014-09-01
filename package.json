@@ -1,0 +1,36 @@
+{
+  "name": "node-matrix-auth",
+  "version": "0.0.0",
+  "description": "Authentication with Squiz Matrix from Node.js",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joshgillies/node-matrix-auth.git"
+  },
+  "keywords": [
+    "auth",
+    "authentication",
+    "squiz",
+    "mysource",
+    "matrix"
+  ],
+  "author": "Josh Gillies <npm@joshgilli.es> (http://joshgilli.es/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/joshgillies/node-matrix-auth/issues"
+  },
+  "homepage": "https://github.com/joshgillies/node-matrix-auth",
+  "devDependencies": {
+    "jshint": "^2.5.5",
+    "tape": "^2.14.0"
+  },
+  "dependencies": {
+    "soap": "^0.5.1"
+  }
+}
