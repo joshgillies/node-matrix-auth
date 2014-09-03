@@ -31,6 +31,7 @@
     "tape": "^2.14.0"
   },
   "dependencies": {
-    "soap": "^0.5.1"
+    "soap": "^0.5.1",
+    "trumpet": "^1.6.5"
   }
 }
