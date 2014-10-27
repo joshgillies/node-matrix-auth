@@ -1,21 +1,13 @@
 var url = require('url');
-var http = require('http');
-var https = require('https');
 var soap = require('soap');
+var xtend = require('xtend');
+var events = require('events');
 var trumpet = require('trumpet');
+var hyperquest = require('hyperquest');
 
-//soap.CookiePassThrough = requrie('./lib/CookiePassThrough.js');
-
-var authObj = function authObj(credentials) {
-  return {
-    'Username': credentials[0],
-    'Password': credentials[1]
-  };
-};
-
-var getNonce = function getNonce(host, cookie, callback) {
-  host = url.parse(host + '/_admin/');
-  host.query = {
+var getNonce = function getNonce(href, cookie, callback) {
+  href = url.parse(href);
+  href.query = {
     'SQ_BACKEND_PAGE': 'main',
     backend_section: 'am',
     am_section: 'edit_asset',
@@ -23,10 +15,7 @@ var getNonce = function getNonce(host, cookie, callback) {
     asset_ei_screen: '',
     ignore_frames: '1'
   };
-  host = url.parse(url.format(host));
-  host.headers = {
-    'Cookie': cookie
-  };
+  href = url.format(href);
 
   var tr = trumpet();
 
@@ -38,48 +27,56 @@ var getNonce = function getNonce(host, cookie, callback) {
     callback(null, value);
   });
 
-  var get = host.protocol === 'https:' ? https.get : http.get;
-  get(host, function(res) {
-    res.pipe(tr);
-    res.on('error', function(err) {
-      callback(err);
-    });
+  var request = hyperquest(href);
+  request.setHeader('Cookie', cookie);
+  request.pipe(tr);
+  request.on('error', function(err) {
+    callback(err);
   });
 };
 
-var matrixAuth = function matrixAuth(opts, callback) {
+module.exports = function matrixAuth(opts) {
   if (typeof opts === 'string')
     opts = url.parse(opts);
 
+  var emitter = new events.EventEmitter();
+
   if (!opts.auth)
-    return callback(new Error('User credentials not defined'));
+    return emitter.emit('error', new Error('User credentials not defined'));
+  if (opts.wsdl) {
+    opts.wsdl = url.parse(opts.wsdl);
+  }
+  if (opts.admin) {
+    opts.admin = url.parse(opts.admin);
+  }
 
-  var auth = authObj(opts.auth.split(':'));
-
-  soap.createClient(url.format(opts), function(err, client) {
+  soap.createClient(url.format(xtend(opts.wsdl, { auth: opts.auth })), function(err, client) {
     if (err)
-      return callback(err);
+      return emitter.emit('error', err);
+
+    var auth = opts.auth.split(':');
 
     if (!client.LoginUser)
-      return callback(new Error('SOAP API function LoginUser not enabled'));
+      return emitter.emit('error', new Error('SOAP API function LoginUser not enabled'));
 
-    //client.setSecurity(new soap.CookiePassThrough(cookie));
-    client.setSecurity(new soap.BasicAuthSecurity(auth.Username, auth.Password));
-    client.LoginUser(auth, function(err, res) {
+    client.setSecurity(new soap.BasicAuthSecurity(auth[0], auth[1]));
+    client.LoginUser({ Username: auth[0], Password: auth[1] }, function(err, res) {
       if (err)
-        return callback(err);
+        return emitter.emit('error', err);
 
-      res.cookie = 'SQ_SYSTEM_SESSION=' + res.SessionID;
+      opts.sessionId = res.SessionID;
+      opts.sessionKey = res.SessionKey;
+      opts.cookie = 'SQ_SYSTEM_SESSION=' + res.SessionID;
 
-      getNonce(opts.protocol + '//' + opts.host, res.cookie, function(err, token) {
+      getNonce(url.format(opts.admin), opts.cookie, function(err, nonce) {
         if (err)
-          return callback(err);
+          return emitter.emit('error', err);
 
-        res.nonce = token;
-        callback(null, res);
+        opts.nonce = nonce;
+        emitter.emit('success', opts);
       });
     });
   });
-};
 
-module.exports = matrixAuth;
+  return emitter;
+};
