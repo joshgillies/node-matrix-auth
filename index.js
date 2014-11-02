@@ -1,22 +1,15 @@
 var url = require('url');
 var soap = require('soap');
-var xtend = require('xtend');
-var events = require('events');
+var extend = require('xtend');
 var trumpet = require('trumpet');
 var hyperquest = require('hyperquest');
+var matrixUrl = require('node-matrix-url');
 
 var getNonce = function getNonce(href, cookie, callback) {
-  href = url.parse(href);
-  href.query = {
-    'SQ_BACKEND_PAGE': 'main',
-    backend_section: 'am',
-    am_section: 'edit_asset',
-    assetid: '3',
-    asset_ei_screen: '',
-    ignore_frames: '1'
-  };
-  href = url.format(href);
-
+  href = matrixUrl({
+    href: href,
+    assetId: '3'
+  });
   var tr = trumpet();
 
   var token = tr.select('form input[name=token]');
@@ -35,14 +28,13 @@ var getNonce = function getNonce(href, cookie, callback) {
   });
 };
 
-module.exports = function matrixAuth(opts) {
+module.exports = function matrixAuth(opts, callback) {
   if (typeof opts === 'string')
     opts = url.parse(opts);
 
-  var emitter = new events.EventEmitter();
-
   if (!opts.auth)
-    return emitter.emit('error', new Error('User credentials not defined'));
+    return callback(new Error('User credentials not defined'));
+
   if (opts.wsdl) {
     opts.wsdl = url.parse(opts.wsdl);
   }
@@ -50,19 +42,23 @@ module.exports = function matrixAuth(opts) {
     opts.admin = url.parse(opts.admin);
   }
 
-  soap.createClient(url.format(xtend(opts.wsdl, { auth: opts.auth })), function(err, client) {
+  soap.createClient(url.format(extend(opts.wsdl, { auth: opts.auth })), function(err, client) {
     if (err)
-      return emitter.emit('error', err);
+      return callback(err);
 
-    var auth = opts.auth.split(':');
+    var auth = new (Function.prototype.bind.apply(soap.BasicAuthSecurity, [null].concat(opts.auth.split(':'))))();
 
     if (!client.LoginUser)
-      return emitter.emit('error', new Error('SOAP API function LoginUser not enabled'));
+      callback(new Error('SOAP API function LoginUser not enabled'));
 
-    client.setSecurity(new soap.BasicAuthSecurity(auth[0], auth[1]));
-    client.LoginUser({ Username: auth[0], Password: auth[1] }, function(err, res) {
+
+    client.setSecurity(auth);
+    client.LoginUser({
+      Username: auth._username,
+      Password: auth._password
+    }, function(err, res) {
       if (err)
-        return emitter.emit('error', err);
+        return callback(err);
 
       opts.sessionId = res.SessionID;
       opts.sessionKey = res.SessionKey;
@@ -70,13 +66,11 @@ module.exports = function matrixAuth(opts) {
 
       getNonce(url.format(opts.admin), opts.cookie, function(err, nonce) {
         if (err)
-          return emitter.emit('error', err);
+          return callback(err);
 
         opts.nonce = nonce;
-        emitter.emit('success', opts);
+        callback(null, opts);
       });
     });
   });
-
-  return emitter;
 };

@@ -7,17 +7,16 @@ Example
 -------
 
 ```js
-var matrixAuth = require('node-matrix-auth')({
+var matrixAuth = require('node-matrix-auth');
+
+matrixAuth({
   auth: 'admin:pass',
   admin: 'http://mysource.matrix/_admin',
   wsdl: 'http://mysource.matrix/_web_services/soap?wsdl'
-});
+}, function(err, auth) {
+  if (err)
+    return console.error(err);
 
-matrixAuth.on('error', function(err) {
-  console.log(err);
-});
-
-matrixAuth.on('success', function(auth) {
   console.log(auth);
 });
 ```
