@@ -1,6 +1,6 @@
 {
   "name": "node-matrix-auth",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Authentication with Squiz Matrix from Node.js",
   "main": "index.js",
   "directories": {
