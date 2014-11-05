@@ -1,46 +1,34 @@
 var url = require('url');
 var soap = require('soap');
+var util = require('util');
 var extend = require('xtend');
-var trumpet = require('trumpet');
-var hyperquest = require('hyperquest');
-var matrixUrl = require('node-matrix-url');
+var events = require('events');
+var getNonce = require('./lib/getNonce');
 
-var getNonce = function getNonce(href, cookie, callback) {
-  href = matrixUrl({
-    href: href,
-    assetId: '3'
-  });
-  var tr = trumpet();
+var matrixAuth = function matrixAuth(opts, callback) {
+  var self = this;
+  if (!callback) {
+    if (!(self instanceof matrixAuth))
+      return new matrixAuth(opts);
 
-  var token = tr.select('form input[name=token]');
-  token.getAttribute('value', function(value) {
-    if (!value.length)
-      return callback(new Error('token not found'));
+    events.EventEmitter.call(self);
+    callback = function(err, auth) {
+      if (err) self.emit('error', err);
+      self.emit('success', auth);
+    };
+  }
 
-    callback(null, value);
-  });
-
-  var request = hyperquest(href);
-  request.setHeader('Cookie', cookie);
-  request.pipe(tr);
-  request.on('error', function(err) {
-    callback(err);
-  });
-};
-
-module.exports = function matrixAuth(opts, callback) {
   if (typeof opts === 'string')
     opts = url.parse(opts);
 
   if (!opts.auth)
     return callback(new Error('User credentials not defined'));
 
-  if (opts.wsdl) {
+  if (opts.wsdl)
     opts.wsdl = url.parse(opts.wsdl);
-  }
-  if (opts.admin) {
+
+  if (opts.admin)
     opts.admin = url.parse(opts.admin);
-  }
 
   soap.createClient(url.format(extend(opts.wsdl, { auth: opts.auth })), function(err, client) {
     if (err)
@@ -64,7 +52,7 @@ module.exports = function matrixAuth(opts, callback) {
       opts.sessionKey = res.SessionKey;
       opts.cookie = 'SQ_SYSTEM_SESSION=' + res.SessionID;
 
-      getNonce(url.format(opts.admin), opts.cookie, function(err, nonce) {
+      getNonce(opts.admin, opts.cookie, function(err, nonce) {
         if (err)
           return callback(err);
 
@@ -74,3 +62,7 @@ module.exports = function matrixAuth(opts, callback) {
     });
   });
 };
+
+util.inherits(matrixAuth, events.EventEmitter);
+
+module.exports = matrixAuth;
