@@ -19,9 +19,21 @@ matrixAuth({
 
   console.log(auth);
 });
+
+// or..
+
+matrixAuth({
+  auth: 'admin:pass',
+  admin: 'http://mysource.matrix/_admin',
+  wsdl: 'http://mysource.matrix/_web_services/soap?wsdl'
+}).on('error', function(err) {
+  console.error(err);
+}).on('success', function(auth) {
+  console.log(auth);
+});
 ```
 
-matrixAuth will return an object with the following properties:
+When authentication is successful matrixAuth will return an object with the following properties:
 
 * `auth`: The user authentication information
 * `admin`: The result of passing opts.admin into url.parse
