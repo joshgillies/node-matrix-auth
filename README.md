@@ -33,7 +33,7 @@ matrixAuth({
 });
 ```
 
-When authentication is successful matrixAuth will return an object with the following properties:
+When authentication is successful matrixAuth will return a JavaScript Object with the following properties:
 
 * `auth`: The user authentication information
 * `admin`: The result of passing opts.admin into url.parse
