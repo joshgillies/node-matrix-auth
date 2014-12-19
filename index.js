@@ -5,24 +5,15 @@ var extend = require('xtend');
 var events = require('events');
 var getNonce = require('./lib/getNonce');
 
-var matrixAuth = function matrixAuth(opts, callback) {
-  var self = this;
-  if (!callback) {
-    if (!(self instanceof matrixAuth))
-      return new matrixAuth(opts);
+var Auth = function Auth(opts) {
 
-    events.EventEmitter.call(self);
-    callback = function(err, auth) {
-      if (err) self.emit('error', err);
-      self.emit('success', auth);
-    };
-  }
+  events.EventEmitter.call(this);
 
   if (typeof opts === 'string')
     opts = url.parse(opts);
 
   if (!opts.auth)
-    return callback(new Error('User credentials not defined'));
+    return this.emit('error', new Error('User credentials not defined'));
 
   if (opts.wsdl)
     opts.wsdl = url.parse(opts.wsdl);
@@ -30,39 +21,59 @@ var matrixAuth = function matrixAuth(opts, callback) {
   if (opts.admin)
     opts.admin = url.parse(opts.admin);
 
-  soap.createClient(url.format(extend(opts.wsdl, { auth: opts.auth })), function(err, client) {
+  function complete(err, nonce) {
     if (err)
-      return callback(err);
+      return this.emit('error', err);
+
+    opts.nonce = nonce;
+    this.emit('success', opts);
+  }
+
+  function getSession(err, res) {
+    if (err)
+      return this.emit('error', err);
+
+    opts.sessionId = res.SessionID;
+    opts.sessionKey = res.SessionKey;
+    opts.cookie = 'SQ_SYSTEM_SESSION=' + res.SessionID;
+
+    getNonce(opts.admin, opts.cookie, complete.bind(this));
+  }
+
+  function getClient(err, client) {
+    if (err)
+      return this.emit('error', err);
 
     var auth = new (Function.prototype.bind.apply(soap.BasicAuthSecurity, [null].concat(opts.auth.split(':'))))();
 
     if (!client.LoginUser)
-      callback(new Error('SOAP API function LoginUser not enabled'));
-
+      this.emit('error', new Error('SOAP API function LoginUser not enabled'));
 
     client.setSecurity(auth);
     client.LoginUser({
       Username: auth._username,
       Password: auth._password
-    }, function(err, res) {
-      if (err)
-        return callback(err);
+    }, getSession.bind(this));
+  }
 
-      opts.sessionId = res.SessionID;
-      opts.sessionKey = res.SessionKey;
-      opts.cookie = 'SQ_SYSTEM_SESSION=' + res.SessionID;
-
-      getNonce(opts.admin, opts.cookie, function(err, nonce) {
-        if (err)
-          return callback(err);
-
-        opts.nonce = nonce;
-        callback(null, opts);
-      });
-    });
-  });
+  soap.createClient(url.format(extend(opts.wsdl, { auth: opts.auth })), getClient.bind(this));
 };
 
-util.inherits(matrixAuth, events.EventEmitter);
+util.inherits(Auth, events.EventEmitter);
+
+var matrixAuth = function matrixAuth(opts, callback) {
+  var auth = new Auth(opts);
+
+  if (!callback) {
+    return auth;
+  }
+
+  auth.on('error', callback);
+  auth.once('success', function(auth) {
+    callback(null, auth);
+  });
+
+  return auth;
+};
 
 module.exports = matrixAuth;

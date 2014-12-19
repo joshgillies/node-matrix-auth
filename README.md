@@ -22,13 +22,17 @@ matrixAuth({
 
 // or..
 
-matrixAuth({
+var auth = matrixAuth({
   auth: 'admin:pass',
   admin: 'http://mysource.matrix/_admin',
   wsdl: 'http://mysource.matrix/_web_services/soap?wsdl'
-}).on('error', function(err) {
+})
+
+auth.on('error', function(err) {
   console.error(err);
-}).on('success', function(auth) {
+})
+
+auth.on('success', function(auth) {
   console.log(auth);
 });
 ```
