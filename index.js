@@ -21,11 +21,19 @@ var Auth = function Auth(opts) {
   if (opts.admin)
     opts.admin = url.parse(opts.admin);
 
+  this._ready = false;
+
   function complete(err, nonce) {
     if (err)
       return this.emit('error', err);
 
     opts.nonce = nonce;
+
+    for (var key in opts) {
+      this[key] = opts[key];
+    }
+
+    this._ready = true;
     this.emit('success', opts);
   }
 
