@@ -34,7 +34,6 @@
     "hyperquest": "^1.0.1",
     "soap": "^0.5.1",
     "trumpet": "^1.7.0",
-    "xtend": "^4.0.0",
     "node-matrix-url": "^0.0.1"
   }
 }

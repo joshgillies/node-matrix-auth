@@ -1,7 +1,6 @@
 var url = require('url');
 var soap = require('soap');
 var util = require('util');
-var extend = require('xtend');
 var events = require('events');
 var getNonce = require('./lib/getNonce');
 
@@ -15,11 +14,15 @@ var Auth = function Auth(opts) {
   if (!opts.auth)
     return this.emit('error', new Error('User credentials not defined'));
 
-  if (opts.wsdl)
+  if (opts.wsdl) {
     opts.wsdl = url.parse(opts.wsdl);
+    opts.wsdl.auth = opts.auth;
+  }
 
-  if (opts.admin)
+  if (opts.admin) {
     opts.admin = url.parse(opts.admin);
+    opts.admin.auth = opts.auth;
+  }
 
   this._ready = false;
 
@@ -64,7 +67,7 @@ var Auth = function Auth(opts) {
     }, getSession.bind(this));
   }
 
-  soap.createClient(url.format(extend(opts.wsdl, { auth: opts.auth })), getClient.bind(this));
+  soap.createClient(url.format(opts.wsdl), getClient.bind(this));
 };
 
 util.inherits(Auth, events.EventEmitter);
