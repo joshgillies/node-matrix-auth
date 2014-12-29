@@ -75,14 +75,12 @@ util.inherits(Auth, events.EventEmitter);
 var matrixAuth = function matrixAuth(opts, callback) {
   var auth = new Auth(opts);
 
-  if (!callback) {
-    return auth;
+  if (callback) {
+    auth.on('error', callback);
+    auth.once('success', function(data) {
+      callback(null, data);
+    });
   }
-
-  auth.on('error', callback);
-  auth.once('success', function(auth) {
-    callback(null, auth);
-  });
 
   return auth;
 };
